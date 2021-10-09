@@ -1,15 +1,13 @@
 import os, times
 
 from strutils import find, replace
-
-let TRASH_PATH: string = getHomeDir() & ".local/share/Trash/"
+from common import TRASH_PATH
 
 proc writeTrashInfo(originalFileName, trashFileName: string) =
     let filePath = originalFileName.replace(" ", "%20")
     var time: string = $getTime()
     time = time[0 ..< time.find("+")]
     writeFile(TRASH_PATH & "info/" & trashFileName & ".trashinfo", "[Trash Info]\nPath=" & filePath & "\nDeletionDate=" & time & "\n")
-
 
 proc generateFileTrashName(file: string, isFile: bool): string =
     var
@@ -63,3 +61,5 @@ if paramCount() > 0:
             quit()
 
         echo "Moved to trash."
+else: # otherwise, just display the help.
+    echo "This is the help page! Just 'nrash filename.txt' and nrash will move it to trash."
