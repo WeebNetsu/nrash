@@ -50,12 +50,14 @@ if paramCount() > 0:
         # make sure the file/folder exists
         if dirExists(selectedFile):
             let trashFileName = generateFileTrashName(paramStr(parameter), false)
-            selectedFile.moveDir(TRASH_PATH & "files/" & trashFileName)
+            # NB! You MUST write the trash info BEFORE you move the file
+            # https://specifications.freedesktop.org/trash-spec/trashspec-latest.html
             writeTrashInfo(selectedFile, trashFileName)
+            selectedFile.moveDir(TRASH_PATH & "files/" & trashFileName)
         elif fileExists(selectedFile):
             let trashFileName = generateFileTrashName(paramStr(parameter), true)
-            selectedFile.moveFile(TRASH_PATH & "files/" & trashFileName)
             writeTrashInfo(selectedFile, trashFileName)
+            selectedFile.moveFile(TRASH_PATH & "files/" & trashFileName)
         else:
             echo "Invlid file name or file does not exist."
             quit()
