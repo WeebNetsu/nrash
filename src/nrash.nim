@@ -1,11 +1,13 @@
 import os, times
 from strutils import find, replace
+from uri import encodeUrl
 
 # my stuff
 import common
 
 proc writeTrashInfo(originalFileName, trashFileName: string) =
-    let filePath = originalFileName.replace(" ", "%20")
+    # encodeUrl will remove all invalid characters from filename
+    let filePath = encodeUrl(originalFileName, false).replace("%2F", "/") # "/" is for the file path, should not be encoded
     var time: string = $getTime()
     time = time[0 ..< time.find("+")]
     writeFile(TRASH_INFO_PATH & trashFileName & ".trashinfo", "[Trash Info]\nPath=" & filePath & "\nDeletionDate=" & time & "\n")
