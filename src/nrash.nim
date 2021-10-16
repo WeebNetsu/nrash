@@ -47,7 +47,7 @@ proc generateFileTrashName(file: string, isFile: bool): string =
     return trashFileName
 
 proc main() =
-    if paramCount() > 0: # if they have entered at leasat 1 parameter!
+    if paramCount() > 0: # if they have entered at least 1 parameter!
         for parameter in 1 .. paramCount(): # they can delete multiple files/folders
             let selectedFile: string = getCurrentDir() & "/" & paramStr(parameter)
 
