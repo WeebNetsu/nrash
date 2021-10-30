@@ -9,7 +9,6 @@ var
     fileCount: int = 0
     filesAndNumber: seq[tuple[number: int, file: string, kind: string]]
 
-# TODO: Show loading while getting files, limit loading to 100 if --all flag not used
 for kind, path in walkDir(TRASH_FILES_PATH):
     fileCount += 1
 
