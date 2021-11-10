@@ -10,7 +10,7 @@ proc writeTrashInfo(originalFileName, trashFileName: string) =
     # encodeUrl will remove all invalid characters from filename
     let filePath = encodeUrl(originalFileName, false).replace("%2F", "/") # "/" is for the file path, should not be encoded
     var time: string = $getTime() # get current time (time file was moved to trash)
-    time = time[0 ..< time.find("+")] 
+    time = time[0 ..< time.find("+")]
     try:
         # write info to .trashinfo file
         writeFile(TRASH_INFO_PATH & trashFileName & ".trashinfo", "[Trash Info]\nPath=" & filePath & "\nDeletionDate=" & time & "\n")
@@ -28,7 +28,6 @@ proc generateFileTrashName(file: string, isFile: bool): string =
         trashFileName = splitFile(file)[1] & splitFile(file)[2]
     else:
         trashFileName = file.replace("/", "") # "/" should not be allowed!!!
-            
 
     while fileExists(TRASH_FILES_PATH & trashFileName) or dirExists(TRASH_FILES_PATH & trashFileName):
         fileNum += 1 # at the top, because file.1.txt is very unlikely to happen usually
@@ -43,7 +42,7 @@ proc generateFileTrashName(file: string, isFile: bool): string =
             echo "Moving files to trash might become slow if you do not delete them!"
             notified = true
             sleep(5000)
-        
+
     return trashFileName
 
 proc main() =
