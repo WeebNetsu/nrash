@@ -1,27 +1,45 @@
-import os, tables, terminal
+import os, tables, terminal, std/strformat
 
 from std/strutils import parseInt, toLowerAscii
 from system import quit
 
 import common
 
-proc displayFiles(kind: PathComponent, path: string, number: int) =
+func shortendFileName(str: string, length: int = 15): string =
+    if str.len() >= length: 
+        return str[0 .. length - 3] & "..."
+    else: 
+        return str & " " * (length - str.len())
+
+proc displayFiles(kind: PathComponent, path: string, number: int, inCols: bool = false) =
+    let endLineChar: char = if number mod 3 == 0: '\n' else: '\t'
+    var output: string
+
+    if inCols:
+        output = shortendFileName(splitPath(path).tail) & endLineChar
+    else:
+        output = &"[{number}] File: {splitPath(path).tail}\n"
+
     if kind == pcFile:
         setForegroundColor(ForegroundColor.fgCyan)
-        echo("[", number ,"] File: ", splitPath(path).tail)
+        stdout.write(output)
     elif kind == pcDir:
         setForegroundColor(ForegroundColor.fgBlue)
-        echo("[", number ,"] Folder: ", splitPath(path).tail)
+        stdout.write(output)
     else:
         setForegroundColor(ForegroundColor.fgWhite)
-        echo("[", number ,"] Link: ", splitPath(path).tail)
+        stdout.write(output)
 
     stdout.resetAttributes() # reset terminal colors & stuff
 
 proc main() =
     let FLAGS: Table[string, tuple[selected: bool, desc: string]] = checkFlags({
         "--all": (false, "Display all items in trash, do not wait for a command"), 
-        # "--col": (false, "Display all items in trash (in columns)"), 
+        # there is so many features that can be added with the col feature, such as
+        # column length and how many columns to display... We'll see about implementing
+        # those later, maybe the amount of columns can be calculated by the terminal
+        # width instead?
+        "--col": (false, "Display all items in trash (in columns)"),
         "--help": (false, "Display help"), 
         }.toTable())
 
@@ -38,9 +56,14 @@ proc main() =
         elif FLAGS["--help"].selected:
             displayHelp("nrash-list", "List items in trash", FLAGS)
             break
+        elif FLAGS["--col"].selected:
+            displayFiles(kind, path, fileCount, true)
         else:
             allFileDetails.add((fileCount, path, kind))
             noFlags = true
+
+    if FLAGS["--col"].selected:
+        echo "" # just to set the input at the correct location again
 
     if noFlags:
         var fileNum: int = 1

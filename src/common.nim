@@ -29,3 +29,9 @@ proc displayHelp*(name: string, desc: string, FLAGS: Table[string, tuple[selecte
         echo &"\t{flag}\t->\t{FLAGS[flag].desc}"
 
     stdout.resetAttributes() # reset terminal colors & stuff
+
+func `*`*(str: string, num: int): string =
+    if num <= 0:
+        return ""
+    for item in 0 .. num:
+        result &= str
