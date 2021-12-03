@@ -1,7 +1,4 @@
-import os, tables, terminal, std/strformat
-
-from std/strutils import parseInt, toLowerAscii
-from system import quit
+import os, tables, terminal, strformat, strutils, times
 
 import common
 
@@ -31,6 +28,40 @@ proc displayFiles(kind: PathComponent, path: string, number: int, inCols: bool =
         stdout.write(output)
 
     stdout.resetAttributes() # reset terminal colors & stuff
+
+proc displayFileInfo(fileDetails: tuple[number: int, filePath: string, kind: PathComponent]) =
+    let chosenFileName = splitPath(fileDetails.filePath).tail
+    var
+        originalPath: string
+        deleteDate: string
+        f: File
+        
+    if open(f, TRASH_INFO_PATH & chosenFileName & ".trashinfo"): # check if file can be opened
+        try:
+            discard f.readLine() # first line is useless
+            originalPath = f.readLine().split("=")[1] # read single line
+            deleteDate = f.readLine().replace("T", " ")
+            deleteDate.delete(0 .. deleteDate.find('='))
+            close(f)
+        except EOFError, IndexDefect:
+            close(f)
+            showError("Some data may have been corrupted!")
+    else:
+        showError("File not found?")
+    
+    echo "\nChosen File: ", chosenFileName
+
+    if fileDetails.kind == pcDir:
+        echo "File Type: Directory (Folder)"
+    elif fileDetails.kind == pcFile:
+        echo "File Type: File"
+    else:
+        echo "File Type: Link"
+        
+    echo "Restore Path: ", originalPath
+    let deleteDateDT: DateTime = parse(deleteDate, "YYYY-MM-dd hh:mm:ss")
+    echo fmt"Delete Date: {deleteDateDT.monthday} {deleteDateDT.month} {deleteDateDT.year} at {deleteDateDT.hour}:{deleteDateDT.minute}:{deleteDateDT.second}"
+    echo ""
 
 proc main() =
     let FLAGS: Table[string, tuple[selected: bool, desc: string]] = checkFlags({
@@ -74,8 +105,8 @@ proc main() =
             fileNum += 1
 
             if ((fileNum mod 10 == 0)) or (fileNum == fileCount - 1):
-                echo "Controls:\n\tn - next\t\tp - previous\n\tq - Quit" # \t\t1 - show details of first item
-                let choice: string = readLine(stdin)
+                echo "Controls:\n\tn - next\t\tp - previous\n\tq - Quit\t\t1 - Show first item" # \t\t1 - show details of first item
+                let choice: string = getUserInput()
 
                 try:
                     let item: int = choice.parseInt()
@@ -83,7 +114,8 @@ proc main() =
                         echo "No file with number ", item, " found."
                         fileNum -= 10 # for now will work, but change so it doesn't display the files again
                     else:
-                        echo "Chosen File: ", allFileDetails[item]
+                        displayFileInfo(allFileDetails[item])
+                        quit()
                 except ValueError: # if user entered a string
                     if choice.toLowerAscii() == "p":
                         if fileNum >= 20:
