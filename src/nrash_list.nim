@@ -1,78 +1,21 @@
-import os, tables, terminal, strformat, strutils, times
+import os, tables, terminal
 
 import common
 
-func shortendFileName(str: string, length: int = 15): string =
-    if str.len() >= length: 
-        return str[0 .. length - 3] & "..."
-    else: 
-        return str & " " * (length - str.len())
-
-proc displayFiles(kind: PathComponent, path: string, number: int, inCols: bool = false) =
-    let endLineChar: char = if number mod 3 == 0: '\n' else: '\t'
-    var output: string
-
-    if inCols:
-        output = shortendFileName(splitPath(path).tail) & endLineChar
-    else:
-        output = &"[{number}] File: {splitPath(path).tail}\n"
-
-    if kind == pcFile:
-        setForegroundColor(ForegroundColor.fgCyan)
-        stdout.write(output)
-    elif kind == pcDir:
-        setForegroundColor(ForegroundColor.fgBlue)
-        stdout.write(output)
-    else:
-        setForegroundColor(ForegroundColor.fgWhite)
-        stdout.write(output)
-
-    stdout.resetAttributes() # reset terminal colors & stuff
-
-proc displayFileInfo(fileDetails: tuple[number: int, filePath: string, kind: PathComponent]) =
-    let chosenFileName = splitPath(fileDetails.filePath).tail
-    var
-        originalPath: string
-        deleteDate: string
-        f: File
-        
-    if open(f, TRASH_INFO_PATH & chosenFileName & ".trashinfo"): # check if file can be opened
-        try:
-            discard f.readLine() # first line is useless
-            originalPath = f.readLine().split("=")[1] # read single line
-            deleteDate = f.readLine().replace("T", " ")
-            deleteDate.delete(0 .. deleteDate.find('='))
-            close(f)
-        except EOFError, IndexDefect:
-            close(f)
-            showError("Some data may have been corrupted!")
-    else:
-        showError("File not found?")
-    
-    echo "\nChosen File: ", chosenFileName
-
-    if fileDetails.kind == pcDir:
-        echo "File Type: Directory (Folder)"
-    elif fileDetails.kind == pcFile:
-        echo "File Type: File"
-    else:
-        echo "File Type: Link"
-        
-    echo "Restore Path: ", originalPath
-    let deleteDateDT: DateTime = parse(deleteDate, "YYYY-MM-dd hh:mm:ss")
-    echo fmt"Delete Date: {deleteDateDT.monthday} {deleteDateDT.month} {deleteDateDT.year} at {deleteDateDT.hour}:{deleteDateDT.minute}:{deleteDateDT.second}"
-    echo ""
-
 proc main() =
-    let FLAGS: Table[string, tuple[selected: bool, desc: string]] = checkFlags({
-        "--all": (false, "Display all items in trash, do not wait for a command"), 
-        # there is so many features that can be added with the col feature, such as
-        # column length and how many columns to display... We'll see about implementing
-        # those later, maybe the amount of columns can be calculated by the terminal
-        # width instead?
-        "--col": (false, "Display all items in trash (in columns)"),
-        "--help": (false, "Display help"), 
+    let 
+        FLAGS: Table[string, tuple[selected: bool, desc: string]] = checkFlags({
+            "--all": (false, "Display all items in trash, do not wait for a command"), 
+            # there is so many features that can be added with the col feature, such as
+            # column length and how many columns to display... We'll see about implementing
+            # those later, maybe the amount of columns can be calculated by the terminal
+            # width instead?
+            "--col": (false, "Display all items in trash (in columns)"),
+            "--help": (false, "Display help"),
+            "--no-color": (false, "Remove the colors")
         }.toTable())
+
+        colored: bool = not FLAGS["--no-color"].selected
 
     var
         fileCount: int = 0
@@ -83,12 +26,12 @@ proc main() =
         fileCount += 1
 
         if FLAGS["--all"].selected: # we only handle ONE flag at a time
-            displayFiles(kind, path, fileCount)
+            displayFiles(kind, path, fileCount, false, colored)
         elif FLAGS["--help"].selected:
             displayHelp("nrash-list", "List items in trash", FLAGS)
             break
         elif FLAGS["--col"].selected:
-            displayFiles(kind, path, fileCount, true)
+            displayFiles(kind, path, fileCount, true, colored)
         else:
             allFileDetails.add((fileCount, path, kind))
             noFlags = true
@@ -101,30 +44,14 @@ proc main() =
 
         while fileNum <= fileCount:
             var file = allFileDetails[fileNum]
-            displayFiles(file.kind, file.filePath, fileNum)
+            displayFiles(file.kind, file.filePath, fileNum, colored=(colored))
             fileNum += 1
 
             if ((fileNum mod 10 == 0)) or (fileNum == fileCount - 1):
                 echo "Controls:\n\tn - next\t\tp - previous\n\tq - Quit\t\t1 - Show first item" # \t\t1 - show details of first item
                 let choice: string = getUserInput()
 
-                try:
-                    let item: int = choice.parseInt()
-                    if item >= fileCount:
-                        echo "No file with number ", item, " found."
-                        fileNum -= 10 # for now will work, but change so it doesn't display the files again
-                    else:
-                        displayFileInfo(allFileDetails[item])
-                        quit()
-                except ValueError: # if user entered a string
-                    if choice.toLowerAscii() == "p":
-                        if fileNum >= 20:
-                            fileNum -= 20
-                            echo "Going back"
-                        else:
-                            echo "Can't go back, you're already at the start!"
-                    elif choice.toLowerAscii() == "q":
-                        quit()
+                fileNum = navigateList(fileNum, fileCount, choice, allFileDetails)
 
     if FLAGS["--all"].selected:
         echo "Total of ", fileCount, " files/folders"
