@@ -1,7 +1,9 @@
-import tables, strformat, times
+#! NOTE: This file requires Nim version 1.6.0
+
+import tables, strformat
 from os import getHomeDir, paramStr, paramCount, PathComponent, splitPath
 from terminal import setForegroundColor, resetAttributes, ForegroundColor
-from strutils import toLowerAscii, split, delete, replace, parseInt
+from strutils import toLowerAscii, parseInt
 
 let
     TRASH_PATH*: string = getHomeDir() & ".local/share/Trash/"
@@ -75,58 +77,23 @@ proc displayFiles*(kind: PathComponent, path: string, number: int, inCols: bool 
 
     stdout.resetAttributes() # reset terminal colors & stuff
 
-proc displayFileInfo(fileDetails: tuple[number: int, filePath: string, kind: PathComponent]) =
-    let chosenFileName = splitPath(fileDetails.filePath).tail
-    var
-        originalPath: string
-        deleteDate: string
-        f: File
-        
-    if open(f, TRASH_INFO_PATH & chosenFileName & ".trashinfo"): # check if file can be opened
-        try:
-            discard f.readLine() # first line is useless
-            originalPath = f.readLine().split("=")[1] # read single line
-            deleteDate = f.readLine().replace("T", " ")
-            deleteDate.delete(0 .. deleteDate.find('='))
-            close(f)
-        except EOFError, IndexDefect:
-            close(f)
-            showError("Some data may have been corrupted!")
-    else:
-        showError("File not found?")
-    
-    echo "\nChosen File: ", chosenFileName
-
-    if fileDetails.kind == pcDir:
-        echo "File Type: Directory (Folder)"
-    elif fileDetails.kind == pcFile:
-        echo "File Type: File"
-    else:
-        echo "File Type: Link"
-        
-    echo "Restore Path: ", originalPath
-    let deleteDateDT: DateTime = parse(deleteDate, "YYYY-MM-dd hh:mm:ss")
-    echo fmt"Delete Date: {deleteDateDT.monthday} {deleteDateDT.month} {deleteDateDT.year} at {deleteDateDT.hour}:{deleteDateDT.minute}:{deleteDateDT.second}"
-    echo ""
-
-proc navigateList*(fileNum: int, fileCount: int, action: string, allFileDetails: seq[tuple[number: int, filePath: string, kind: PathComponent]]): int =
-    result = fileNum
+proc navigateList*(fileNum: int, fileCount: int, input: string, allFileDetails: seq[tuple[number: int, filePath: string, kind: PathComponent]]): tuple[navigate: bool, value: int] =
+    result = (true, fileNum)
     try:
-        let item: int = action.parseInt()
+        let item: int = input.parseInt()
         if item >= fileCount:
             echo "No file with number ", item, " found."
-            result -= 10 # for now will work, but change so it doesn't display the files again
+            result.value -= 10 # for now will work, but change so it doesn't display the files again
         else:
-            displayFileInfo(allFileDetails[item])
-            quit()
+            result = (false, item)
     except ValueError: # if user entered a string
-        if action.toLowerAscii() == "p":
-            if result >= 20:
-                result -= 20
-                if result < 1:
-                    result += 1
+        if input.toLowerAscii() == "p":
+            if result.value >= 20:
+                result.value -= 20
+                if result.value < 1:
+                    result.value += 1
                 echo "Going back"
             else:
                 echo "Can't go back, you're already at the start!"
-        elif action.toLowerAscii() == "q":
+        elif input.toLowerAscii() == "q":
             quit()

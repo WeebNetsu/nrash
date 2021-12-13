@@ -1,5 +1,7 @@
 bin/
 nrash_list
+nrash
+nrash_restore
 
 nimcache/
 nimblecache/
