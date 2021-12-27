@@ -27,7 +27,6 @@ proc restoreFile(filePath: string, kind: PathComponent) =
     try:
         # currently, if the file/folder original location doesn't exist (original folder it was in was deleted)
         # then the below will fail.
-        # todo: Make sure to restore all the missing folders when restoring a file/folder
         if kind == pcDir:
             moveDir(TRASH_FILES_PATH & chosenFileName, originalPath)
             removeFile(infoFile)
@@ -35,14 +34,35 @@ proc restoreFile(filePath: string, kind: PathComponent) =
             moveFile(TRASH_FILES_PATH & chosenFileName, originalPath)
             removeFile(infoFile)
             echo &"Restored {chosenFileName}!"
-    except OSError:
-        showError("Could not restore file/folder to original location!")
+    except OSError: # if original file path does not exist
+        let allPaths: seq[string] = originalPath.split("/")
+
+        var 
+            fullPath: string = ""
+            dirMissing: bool = false
+
+        for path in allPaths:
+            if path != allPaths[len(allPaths) - 1]:
+                fullPath &= path & "/"
+                if not dirExists(fullPath):
+                    dirMissing = true
+                    try:
+                        createDir(fullPath)
+                    except OSError:
+                        showError("Could not restore file/folder to original location. Error at '" & fullPath & "'.")
+        
+        if not dirMissing: # if a different error occured than the original location not existing, such as permission error
+            showError("Could not restore file/folder to original location.")
+        else: # try restoring it again
+            restoreFile(filePath, kind)
 
 proc main() =
     let 
         FLAGS: Table[string, tuple[selected: bool, desc: string]] = checkFlags({
             "--help": (false, "Display help"),
-            "--no-color": (false, "Remove the colors")
+            "--no-color": (false, "Remove the colors"),
+            # todo: allow to see only files that once existed in current directory
+            "--cur": (false, "Files that were children of current directory")
         }.toTable())
 
         colored: bool = not FLAGS["--no-color"].selected
