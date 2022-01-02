@@ -1,9 +1,9 @@
 #! NOTE: This file requires Nim version 1.6.0
 
-import tables, strformat
+import tables, strformat, options, times
 from os import getHomeDir, paramStr, paramCount, PathComponent, splitPath
 from terminal import setForegroundColor, resetAttributes, ForegroundColor
-from strutils import toLowerAscii, parseInt
+from strutils import toLowerAscii, parseInt, split, delete, replace
 
 let
     TRASH_PATH*: string = getHomeDir() & ".local/share/Trash/"
@@ -56,11 +56,15 @@ func shortendFileName*(str: string, length: int = 15): string =
 
 proc displayFiles*(kind: PathComponent, path: string, number: int, inCols: bool = false, colored: bool) =
     let endLineChar: char = if number mod 3 == 0: '\n' else: '\t'
-    var output: string
+
+    var
+        output: string
+        fileType: string = if kind == pcDir: "Folder" elif kind == pcFile: "File" else: "Link"
+
     if inCols:
         output = shortendFileName(splitPath(path).tail) & endLineChar
     else:
-        output = &"[{number}] File: {splitPath(path).tail}\n"
+        output = &"[{number}] {fileType}: {splitPath(path).tail}\n"
 
     if kind == pcFile:
         if colored:
@@ -97,3 +101,41 @@ proc navigateList*(fileNum: int, fileCount: int, input: string, allFileDetails: 
                 echo "Can't go back, you're already at the start!"
         elif input.toLowerAscii() == "q":
             quit()
+
+proc getTrashFileInfo*(fileDetails: tuple[number: int, filePath: string, kind: PathComponent], display: bool = true): Option[tuple[originalPath: string, deleteDate: string]] =
+    result = none(tuple[originalPath: string, deleteDate: string])
+
+    let chosenFileName = splitPath(fileDetails.filePath).tail
+    var
+        originalPath: string
+        deleteDate: string
+        f: File
+    if open(f, TRASH_INFO_PATH & chosenFileName & ".trashinfo"): # check if file can be opened
+        try:
+            discard f.readLine() # first line is useless
+            originalPath = f.readLine().split("=")[1] # read single line
+            deleteDate = f.readLine().replace("T", " ")
+            deleteDate.delete(0 .. deleteDate.find('='))
+            close(f)
+        except EOFError, IndexDefect:
+            close(f)
+            showError("Some data may have been corrupted!")
+    else:
+        showError("File (info) not found.")
+    
+    if display:
+        echo "\nChosen File: ", chosenFileName
+
+        if fileDetails.kind == pcDir:
+            echo "File Type: Directory (Folder)"
+        elif fileDetails.kind == pcFile:
+            echo "File Type: File"
+        else:
+            echo "File Type: Link"
+            
+        echo "Restore Path: ", originalPath
+        let deleteDateDT: DateTime = parse(deleteDate, "YYYY-MM-dd hh:mm:ss")
+        echo fmt"Delete Date: {deleteDateDT.monthday} {deleteDateDT.month} {deleteDateDT.year} at {deleteDateDT.hour}:{deleteDateDT.minute}:{deleteDateDT.second}"
+        echo ""
+    
+    result = some((originalPath, deleteDate))

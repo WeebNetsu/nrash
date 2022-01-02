@@ -1,5 +1,5 @@
 import os, times
-from strutils import find, replace
+from strutils import find, replace, endsWith, delete
 from uri import encodeUrl
 
 # my stuff
@@ -48,11 +48,16 @@ proc generateFileTrashName(file: string, isFile: bool): string =
 proc main() =
     if paramCount() > 0: # if they have entered at least 1 parameter!
         for parameter in 1 .. paramCount(): # they can delete multiple files/folders
-            let selectedFile: string = getCurrentDir() & "/" & paramStr(parameter)
+            var parm: string = paramStr(parameter)
+            let selectedFile: string = getCurrentDir() & "/" & parm
 
             # make sure the file/folder exists
             if dirExists(selectedFile):
-                let trashFileName = generateFileTrashName(paramStr(parameter), false)
+                if parm.endsWith("/"):
+                    delete(parm, len(parm) - 1 .. len(parm) - 1)
+
+                var trashFileName = generateFileTrashName(parm, false)
+                    
                 # NB! You MUST write the trash info BEFORE you move the file
                 # https://specifications.freedesktop.org/trash-spec/trashspec-latest.html
                 writeTrashInfo(selectedFile, trashFileName)

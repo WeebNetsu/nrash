@@ -1,6 +1,6 @@
-import os, tables, terminal, strformat
+import os, tables, terminal, strformat, options
 
-from strutils import split, delete, replace
+from strutils import split, delete, replace, startsWith
 
 import common
 
@@ -22,7 +22,7 @@ proc restoreFile(filePath: string, kind: PathComponent) =
             close(f)
             showError("Some data may have been corrupted!")
     else:
-        showError("File not found?")
+        showError("File not (info) found.")
     
     try:
         # currently, if the file/folder original location doesn't exist (original folder it was in was deleted)
@@ -33,7 +33,8 @@ proc restoreFile(filePath: string, kind: PathComponent) =
         else:
             moveFile(TRASH_FILES_PATH & chosenFileName, originalPath)
             removeFile(infoFile)
-            echo &"Restored {chosenFileName}!"
+
+        echo &"Restored {chosenFileName}!"
     except OSError: # if original file path does not exist
         let allPaths: seq[string] = originalPath.split("/")
 
@@ -61,7 +62,6 @@ proc main() =
         FLAGS: Table[string, tuple[selected: bool, desc: string]] = checkFlags({
             "--help": (false, "Display help"),
             "--no-color": (false, "Remove the colors"),
-            # todo: allow to see only files that once existed in current directory
             "--cur": (false, "Files that were children of current directory")
         }.toTable())
 
@@ -69,8 +69,9 @@ proc main() =
 
     var
         fileCount: int = 0
+        viewableFiles: int = 0
         allFileDetails: seq[tuple[number: int, filePath: string, kind: PathComponent]]
-        no_flags = false
+        noFlags = false
 
     for kind, path in walkDir(TRASH_FILES_PATH):
         fileCount += 1
@@ -78,20 +79,29 @@ proc main() =
         if FLAGS["--help"].selected:
             displayHelp("nrash-list", "List items in trash", FLAGS)
             break
+        elif FLAGS["--cur"].selected:
+            let info: Option[tuple[originalPath: string, deleteDate: string]] = getTrashFileInfo((fileCount, path, kind), false)
+            if isSome(info):
+                if startsWith(get(info).originalPath, getCurrentDir()):
+                    allFileDetails.add((fileCount, path, kind))
+                    viewableFiles += 1
         else:
             allFileDetails.add((fileCount, path, kind))
-            noFlags = true
+            viewableFiles += 1
+
+    if not FLAGS["--help"].selected:
+        noFlags = true
 
     if noFlags:
         var fileNum: int = 1
 
-        while fileNum <= fileCount:
+        while fileNum < viewableFiles:
             var file = allFileDetails[fileNum]
             displayFiles(file.kind, file.filePath, fileNum, colored=(colored))
             fileNum += 1
 
             if ((fileNum mod 10 == 0)) or (fileNum == fileCount - 1):
-                echo "Controls:\n\tn - next\t\tp - previous\n\tq - Quit\t\t1 - Show first item" # \t\t1 - show details of first item
+                echo "Controls:\n\tn - next\t\tp - previous\n\tq - Quit\t\t1 - Restore first item" # \t\t1 - show details of first item
                 let choice: string = getUserInput()
 
                 let action = navigateList(fileNum, fileCount, choice, allFileDetails)
@@ -100,6 +110,18 @@ proc main() =
                 if not action.navigate:
                     restoreFile(allFileDetails[fileNum].filePath, allFileDetails[fileNum].kind)
                     quit()
+
+        # currently you can't view previous results if the last results are needed to be shown with below
+        # optional, but maybe todo, allow users to go back (use "p")
+        if not (viewableFiles mod 10 == 0):
+            echo "Controls:\n\tq - Quit\t\t1 - Restore first item" # \t\t1 - show details of first item
+            let choice: string = getUserInput()
+
+            let action = navigateList(fileNum, fileCount, choice, allFileDetails)
+            fileNum = action.value
+
+            if not action.navigate:
+                restoreFile(allFileDetails[fileNum].filePath, allFileDetails[fileNum].kind)
 
 main()
 

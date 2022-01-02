@@ -1,42 +1,6 @@
-import os, tables, terminal, times, strformat
-
-from strutils import split, delete, replace
+import os, tables, terminal
 
 import common
-
-proc displayFileInfo(fileDetails: tuple[number: int, filePath: string, kind: PathComponent]) =
-    let chosenFileName = splitPath(fileDetails.filePath).tail
-    var
-        originalPath: string
-        deleteDate: string
-        f: File
-        
-    if open(f, TRASH_INFO_PATH & chosenFileName & ".trashinfo"): # check if file can be opened
-        try:
-            discard f.readLine() # first line is useless
-            originalPath = f.readLine().split("=")[1] # read single line
-            deleteDate = f.readLine().replace("T", " ")
-            deleteDate.delete(0 .. deleteDate.find('='))
-            close(f)
-        except EOFError, IndexDefect:
-            close(f)
-            showError("Some data may have been corrupted!")
-    else:
-        showError("File not found?")
-    
-    echo "\nChosen File: ", chosenFileName
-
-    if fileDetails.kind == pcDir:
-        echo "File Type: Directory (Folder)"
-    elif fileDetails.kind == pcFile:
-        echo "File Type: File"
-    else:
-        echo "File Type: Link"
-        
-    echo "Restore Path: ", originalPath
-    let deleteDateDT: DateTime = parse(deleteDate, "YYYY-MM-dd hh:mm:ss")
-    echo fmt"Delete Date: {deleteDateDT.monthday} {deleteDateDT.month} {deleteDateDT.year} at {deleteDateDT.hour}:{deleteDateDT.minute}:{deleteDateDT.second}"
-    echo ""
 
 proc main() =
     let 
@@ -91,7 +55,7 @@ proc main() =
                 fileNum = action.value
 
                 if not action.navigate:
-                    displayFileInfo(allFileDetails[fileNum])
+                    discard getTrashFileInfo(allFileDetails[fileNum], true)
                     quit()
 
     if FLAGS["--all"].selected:
