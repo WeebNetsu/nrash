@@ -20,7 +20,7 @@ proc main() =
     var
         fileCount: int = 0
         allFileDetails: seq[tuple[number: int, filePath: string, kind: PathComponent]]
-        no_flags = false
+        noFlags = false
 
     for kind, path in walkDir(TRASH_FILES_PATH):
         fileCount += 1
@@ -60,6 +60,9 @@ proc main() =
 
     if FLAGS["--all"].selected:
         echo "Total of ", fileCount, " files/folders"
+
+    if fileCount == 0:
+        echo "Trash is empty"
 
 main()
 

@@ -2,6 +2,7 @@ bin/
 nrash_list
 nrash
 nrash_restore
+nrash_delete
 
 nimcache/
 nimblecache/

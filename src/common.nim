@@ -1,9 +1,8 @@
 #! NOTE: This file requires Nim version 1.6.0
 
-import tables, strformat, options, times
+import tables, strformat, options, times, strutils
 from os import getHomeDir, paramStr, paramCount, PathComponent, splitPath
 from terminal import setForegroundColor, resetAttributes, ForegroundColor
-from strutils import toLowerAscii, parseInt, split, delete, replace
 
 let
     TRASH_PATH*: string = getHomeDir() & ".local/share/Trash/"
@@ -18,7 +17,8 @@ proc showError*(msg: string) =
 
 proc getUserInput*(): string =
     stdout.write("> ")
-    return readLine(stdin)
+    let input = readLine(stdin)
+    return input.strip().toLowerAscii()
 
 # will set flags if any passed in
 proc checkFlags*(FLAGS: Table[string, tuple[selected: bool, desc: string]]): Table[string, tuple[selected: bool, desc: string]] =
