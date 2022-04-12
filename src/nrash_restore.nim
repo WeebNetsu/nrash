@@ -34,7 +34,7 @@ proc restoreFile(filePath: string, kind: PathComponent) =
             moveFile(TRASH_FILES_PATH & chosenFileName, originalPath)
             removeFile(infoFile)
 
-        echo &"Restored {chosenFileName}!"
+        echo &"Restored {chosenFileName} to {originalPath}!"
     except OSError: # if original file path does not exist
         let allPaths: seq[string] = originalPath.split("/")
 
@@ -83,6 +83,7 @@ proc main() =
             let info: Option[tuple[originalPath: string, deleteDate: string]] = getTrashFileInfo((fileCount, path, kind), false)
             if isSome(info):
                 if startsWith(get(info).originalPath, getCurrentDir()):
+                    echo path
                     allFileDetails.add((fileCount, path, kind))
                     viewableFiles += 1
         else:
@@ -93,7 +94,7 @@ proc main() =
         noFlags = true
 
     if noFlags:
-        var fileNum: int = 1
+        var fileNum: int = 0
 
         while fileNum < viewableFiles:
             var file = allFileDetails[fileNum]
